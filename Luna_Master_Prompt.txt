@@ -1,0 +1,572 @@
+LUNA — MASTER IMPLEMENTATION PROMPT
+For Qwen Coder in an IDE with the Luna repository open
+
+ROLE
+Act as a senior programming-language engineer, compiler engineer, frontend engineer, UI/UX designer, documentation writer, security reviewer, and QA engineer. Your task is to build Luna: a real, AI-free programming language and browser-based development studio for building web applications and websites.
+
+IMPORTANT DISTINCTION
+Luna itself must not require AI or an AI API at runtime. Qwen Coder is only the external coding assistant helping implement the project. The finished Luna language, compiler, Studio, and generated websites must work without an AI service unless a user's own generated website explicitly integrates an external AI API.
+
+PRIMARY GOAL
+Build a real, useful, polished, working programming language and browser IDE—not a landing page, mockup, fake compiler, or collection of nonfunctional buttons. Users should be able to write Luna code, compile it, inspect diagnostics, preview the result, debug basic problems, and export a website. Prioritize a reliable working foundation, then expand features in tested phases.
+
+WORKING RULES
+1. First inspect the entire existing repository, its files, package configuration, current implementation, issues, and README. Preserve working features and conventions where reasonable.
+2. Do not delete or rewrite the project blindly. Make a short assessment of the actual repository before editing.
+3. Implement directly in the repository. Do not stop after producing a plan or a beautiful UI.
+4. Never pretend a feature works when it is only a placeholder. Every visible control must work or be clearly disabled/labeled as not yet implemented.
+5. Do not fabricate test results, build results, browser compatibility, security guarantees, or completed features.
+6. Work in small, coherent milestones. After each milestone, run the relevant tests and build, fix regressions, and update documentation.
+7. If context or token limits are reached, stop cleanly and leave a progress report containing completed work, files changed, tests run, current failures, and the next exact tasks. On continuation, inspect the actual repository state and continue from there—do not restart from scratch.
+8. If a requirement is too large, implement a smaller working version and document limitations rather than faking the full feature.
+9. Prefer readable, modular, typed code, meaningful names, comments for non-obvious logic, and maintainable architecture.
+10. Do not ask the user to approve every minor decision. Choose sensible defaults and explain significant trade-offs.
+
+PRODUCT VISION
+Luna should let a beginner build anything that can reasonably be delivered as a browser-based website or web app: landing pages, portfolios, blogs, dashboards, interactive tools, forms, data visualizations, documentation sites, games, SVG graphics, canvas experiences, and client-side applications. It should support standard web technologies without pretending a static HTML file can securely provide server-side secrets, privileged database access, or a complete production backend.
+
+RECOMMENDED TECH STACK
+Inspect the existing repository first. If there is no established stack, use:
+- TypeScript
+- React
+- Vite
+- A maintained code editor component such as Monaco or CodeMirror, selected according to bundle size and mobile usability
+- A real lexer, parser, AST, semantic analysis, compiler/code generator, diagnostics, and runtime
+- Vitest or an equivalent test runner
+- ESLint/TypeScript checks where appropriate
+Avoid unnecessary dependencies and oversized bundles. If a different stack already exists and is working, adapt to it rather than replacing it without reason.
+
+DELIVERABLES
+A. Luna language implementation.
+B. Browser-based Luna Studio.
+C. Working compiler pipeline with useful diagnostics.
+D. Live preview and safe execution model.
+E. Single-file HTML export for compatible projects.
+F. Optional project/ZIP export if practical.
+G. A complete root README.md that serves as a real learning guide and reference.
+H. Automated tests, build checks, examples, and troubleshooting documentation.
+I. Static deployment support for the Studio itself, where the chosen architecture permits it.
+J. A clear list of implemented features and limitations.
+
+ARCHITECTURE
+Use a clean separation of concerns. Adapt the names to the existing repository, but aim for modules comparable to:
+- src/language/lexer
+- src/language/tokens
+- src/language/parser
+- src/language/ast
+- src/language/semantic
+- src/language/compiler
+- src/language/codegen
+- src/language/diagnostics
+- src/runtime
+- src/studio/editor
+- src/studio/preview
+- src/studio/console
+- src/studio/project
+- src/studio/export
+- src/studio/settings
+- src/examples
+- tests
+- docs
+
+Do not create a single enormous source file for the entire compiler. Keep the parser, AST, compiler, runtime, and UI independently testable.
+
+LANGUAGE DESIGN
+Create a coherent, documented syntax. Do not simply label ordinary HTML or JavaScript as Luna. Luna may compile to HTML, CSS, and JavaScript, but it must have its own syntax and a real compilation process.
+
+Choose a small, learnable syntax and document it precisely. For example, the language might use declarations such as:
+- page "My Website"
+- style { ... }
+- component Card(props) { ... }
+- state count = 0
+- let title = "Hello"
+- fn greet(name) { ... }
+- on click { ... }
+- if / else
+- for each
+- import / use, if module support is implemented
+These are illustrative; define one consistent grammar and use it everywhere. Do not implement conflicting syntax examples.
+
+Implement in stages:
+1. Tokens and lexer with source positions.
+2. Parser and AST.
+3. Syntax error reporting with line/column.
+4. Semantic checks and helpful errors.
+5. Code generation.
+6. Runtime and browser integration.
+7. Studio integration.
+8. Examples, docs, and regression tests.
+
+CORE LANGUAGE FEATURES
+Implement and test, in a sensible order:
+- Strings, numbers, booleans, null-like values if part of the design
+- Variables and constants
+- Arithmetic and comparison operators
+- Boolean logic and grouping
+- Arrays and objects
+- Functions and parameters
+- Return values
+- Conditional branches
+- Loops and iteration
+- Scope rules
+- Comments
+- Reusable components
+- Properties/props
+- State and reactive UI updates, if included in the language design
+- Events such as click, input, submit, keydown
+- Basic imports/modules if feasible
+- Useful standard library for common browser work
+- Clear error handling
+- Source maps or source-location mapping where feasible
+- Deterministic, understandable compiler output
+
+Avoid adding every advanced feature at once. First make a small subset genuinely work end-to-end, with tests, then extend it.
+
+HTML CAPABILITIES
+Luna should be able to generate or describe standard, semantic HTML elements, including:
+- Document structure: doctype, html, head, body, title, meta, link
+- Headings, paragraphs, sections, articles, header, footer, nav, main, aside
+- Div, span, lists, tables, blockquotes, code, preformatted text
+- Links, buttons, images, picture/source, figures and captions
+- Forms, labels, inputs, textareas, selects, options, fieldsets, legends
+- Video, audio, source, track, captions
+- Details, summary, dialog where supported
+- Iframes only with explicit security guidance
+- Custom data attributes and appropriate ARIA attributes
+- SVG elements and attributes
+- Canvas elements
+- Metadata for responsive layouts and social sharing
+- Favicons and theme color metadata
+- Correct escaping of text and attributes
+- Semantic and accessible defaults
+
+The implementation must not allow malformed or unsafe input to silently become trusted executable code. Define exactly how Luna content maps to HTML and how escaping works.
+
+CSS AND DESIGN CAPABILITIES
+Support a documented subset that expands over time:
+- Selectors and class/id styling
+- Colors, gradients, backgrounds, borders, shadows
+- Typography and font stacks
+- Spacing, dimensions, box sizing
+- Flexbox and CSS Grid
+- Positioning, stacking contexts, overflow
+- Responsive media queries
+- Container queries if implemented and supported
+- CSS custom properties/design tokens
+- Hover, focus, active, disabled, and selected states
+- Pseudo-elements and pseudo-classes where safely supported
+- Transitions and keyframe animations
+- Transforms
+- Light/dark themes
+- Reduced-motion support
+- Print styles where practical
+- Modern responsive layouts
+- CSS reset/normalization only if justified
+- Clear errors for unsupported syntax
+
+Do not promise support for every possible CSS feature unless it is genuinely implemented. Document unsupported syntax and browser-dependent behavior.
+
+JAVASCRIPT AND BROWSER INTEROP
+Generated sites may need normal browser capabilities. Provide a carefully designed, documented way to:
+- Respond to user events
+- Update UI state
+- Validate forms
+- Perform calculations
+- Read/write permitted DOM properties
+- Use timers and animation frames
+- Use fetch for public APIs
+- Parse and serialize JSON
+- Use URL and URLSearchParams
+- Use localStorage and sessionStorage with clear privacy notes
+- Use clipboard APIs only with user permission/gesture
+- Use geolocation only after browser permission
+- Use camera/microphone only after browser permission and HTTPS where required
+- Use downloads and file inputs with user interaction
+- Use Web Workers if implemented
+- Use WebSockets if implemented
+- Use service workers/PWA features only with correct deployment requirements
+- Use browser history and navigation APIs responsibly
+- Use Canvas 2D and SVG
+- Integrate third-party libraries through explicit imports or documented script/resource options
+
+Never imply that the browser can bypass permissions or origin policies. Document CORS, HTTPS, browser support, rate limits, and external-service requirements. Do not expose secrets in generated client-side code.
+
+COMPONENTS AND REUSABILITY
+If components are part of the language, implement them genuinely:
+- Component definitions
+- Props and default values
+- Child content/slots if supported
+- Composition
+- Reusable styling
+- State boundaries and event flow
+- Clear component errors
+- Example component library
+- Documentation on naming and data flow
+
+Do not add a component UI that only produces static placeholders. Test repeated components, properties, nesting, and invalid inputs.
+
+STUDIO USER EXPERIENCE
+Build a clean, professional, modern interface. Keep it practical, fast, responsive, and beginner-friendly. Avoid excessive gradients, neon effects, pointless animations, giant empty hero sections, fake analytics, and decorative complexity.
+
+The Studio should include:
+- Project/file name
+- Code editor with syntax highlighting if feasible
+- Sensible Luna starter template
+- Compile/Run button
+- Live preview
+- Error and warning panel with line/column information
+- Console/output panel for supported logs
+- Clear loading and compilation states
+- Reset or restore example action with confirmation when data could be lost
+- New project/open example controls that work
+- Copy code
+- Download source
+- Export HTML
+- Optional ZIP export if implemented
+- Responsive layout for phones and tablets
+- Usable touch targets and keyboard navigation
+- Dark/light theme if feasible
+- Settings that actually persist if persistence is offered
+- Unsaved-change indication
+- Useful empty states
+- Clear messages for unsupported features
+- No fake file tree, nonfunctional tabs, or buttons with no action
+
+Mobile matters: test the Studio on a narrow viewport. Keep editing, compiling, and previewing possible on an Android phone. Avoid requiring a powerful desktop-only workflow for basic use.
+
+EDITOR AND PREVIEW
+- Use a real editor component if feasible.
+- Add syntax highlighting and bracket matching if supported by the chosen editor.
+- Show source locations in diagnostics.
+- Preserve the user's source while compiling.
+- Preview generated content in a sandboxed iframe or another carefully reviewed isolation strategy.
+- Avoid directly executing arbitrary user code in the Studio's main application context.
+- Clearly define iframe sandbox permissions. Add only permissions required by actual features.
+- Prevent preview code from accessing Studio internals or secrets.
+- Provide a way to refresh/re-run preview.
+- Capture supported console output and errors without compromising the parent app.
+- Handle compile errors without crashing the editor.
+- Avoid unsafe HTML injection into the Studio itself.
+- Document limitations of the sandbox and browser security model.
+
+COMPILER REQUIREMENTS
+The compiler must:
+- Accept Luna source text.
+- Tokenize it.
+- Parse it into an AST.
+- Perform semantic validation.
+- Generate output or structured intermediate code.
+- Return diagnostics with severity, message, line, and column.
+- Avoid crashing on malformed source.
+- Handle empty input and incomplete edits gracefully.
+- Give deterministic output for the same input.
+- Have unit tests for each stage.
+- Include representative valid and invalid examples.
+- Keep generated code readable enough to debug.
+- Properly escape strings and attribute values.
+- Avoid using unsafe eval/new Function as a shortcut unless a well-justified, reviewed design requires it; prefer a clear compiler pipeline and sandboxed output.
+- Report unsupported language features instead of silently ignoring them.
+
+SINGLE-FILE HTML EXPORT
+A key requirement is that users can export a single index.html and deploy it on static hosting.
+
+The exporter should:
+- Generate valid HTML with doctype, charset, viewport metadata, title, and correct document structure.
+- Embed generated CSS in a style element when possible.
+- Embed generated JavaScript in a script element when possible.
+- Include the required minimal runtime when required.
+- Include project assets as data URLs only when practical and within reasonable size limits.
+- Preserve relative asset paths when users choose a folder/ZIP export instead.
+- Explain when external fonts, APIs, images, libraries, or remote assets still require a network connection.
+- Avoid embedding enormous media files without warning.
+- Offer a clear fallback when a project cannot be faithfully represented as one standalone HTML file.
+- Make exported HTML work without the Studio being open.
+- Test the exported file independently from the Studio.
+- Include a preview/download action that actually works.
+
+Do not claim that every website can be perfectly self-contained. Server-side databases, private secrets, protected authentication, server code, and external services cannot magically be embedded securely in a static HTML file.
+
+PROJECT STORAGE AND FILE MANAGEMENT
+If browser project persistence is implemented:
+- Use IndexedDB or another suitable browser storage mechanism.
+- Provide clear project names and create/open/rename/delete flows.
+- Confirm destructive actions.
+- Handle storage limits and quota errors.
+- Explain that local browser data may be lost if site data is cleared.
+- Provide source export and import for backup.
+- Do not upload project code anywhere without clear user consent.
+- If cloud sync is not implemented, do not imply that projects sync across devices.
+- Validate imported project files and size limits.
+
+EXAMPLES AND TEMPLATES
+Include working examples, each compiled and tested:
+1. Hello World page
+2. Personal portfolio
+3. Responsive landing page
+4. Navigation bar
+5. Cards and feature grid
+6. Pricing table
+7. Contact form with client-side validation
+8. FAQ accordion
+9. Modal/dialog
+10. Tabs
+11. To-do list
+12. Counter and state example
+13. Search/filter list
+14. Responsive dashboard
+15. Blog/article layout
+16. Image gallery
+17. Audio/video player example using user-provided or permitted media
+18. SVG icon and diagram
+19. Canvas drawing demo
+20. Simple browser game
+21. Public API data viewer with loading/error states
+22. Local-storage preferences example
+23. Accessible form
+24. Dark/light theme toggle
+25. Responsive mobile navigation
+26. CSS animation respecting reduced motion
+27. Data table with sorting/filtering if supported
+28. Documentation page
+29. Simple calculator
+30. PWA/service-worker example only if fully implemented and correctly documented
+
+Do not include examples that depend on nonexistent Luna syntax or APIs. Compile every example in automated tests where possible.
+
+SECURITY AND PRIVACY
+Take browser security seriously:
+- Escape text and attributes correctly.
+- Prevent injection vulnerabilities in the Studio.
+- Keep the preview isolated.
+- Do not include secrets or API keys in public client code.
+- Explain that frontend validation is not a security boundary.
+- Explain CORS and same-origin policy.
+- Require explicit user interaction for sensitive browser APIs.
+- Explain HTTPS requirements where relevant.
+- Avoid unsafe URL schemes and dangerous DOM injection patterns.
+- Treat imported source and assets as untrusted.
+- Warn about external resources and third-party scripts.
+- Do not make unsupported claims that the sandbox is perfectly secure.
+- Do not send code, telemetry, or user content to external services unless clearly disclosed and deliberately configured.
+
+ACCESSIBILITY
+Build the Studio and generated templates with:
+- Semantic structure
+- Keyboard access
+- Visible focus indicators
+- Accessible labels
+- Correct heading hierarchy
+- ARIA only where appropriate
+- Sufficient color contrast
+- Reduced-motion preferences
+- Meaningful link and button labels
+- Form error messages associated with fields
+- Responsive text and layouts
+- Screen-reader-friendly status messages where practical
+
+PERFORMANCE AND RELIABILITY
+- Keep the Studio bundle reasonable.
+- Avoid unnecessary rerenders and memory leaks.
+- Debounce automatic compilation if implemented.
+- Do not compile on every keystroke if it makes mobile devices lag.
+- Handle large source files gracefully.
+- Clean up timers, event listeners, object URLs, and workers.
+- Avoid blocking the UI for long operations where possible.
+- Use lazy loading for optional large features.
+- Include error boundaries or equivalent recovery where appropriate.
+- Make the UI recover after malformed code.
+- Test on low-powered/mobile devices where possible.
+- Do not promise performance numbers without measuring them.
+
+NETWORKING, APIS, AUTH, AND DATABASES
+Luna can help users build frontends that interact with external services, but explain the difference between client and server:
+- Public REST APIs and JSON
+- Fetch, loading states, error states, timeouts, and basic retry patterns where appropriate
+- CORS and API rate limits
+- Environment configuration for build-time public values
+- Secure backend architecture concepts
+- Authentication concepts and third-party auth integrations
+- Database concepts and API-backed persistence
+- File uploads and validation concepts
+- Serverless functions or backend endpoints as optional separate deployment targets
+- WebSockets/realtime concepts if supported
+- Payment integrations only through reputable hosted providers and secure server-side flows
+
+Never put private API keys, database administrator credentials, payment secrets, or privileged tokens in a public HTML file. Do not claim that a static site can safely implement a full secure backend by itself. If a feature needs a server, explain the architecture and provide an optional backend example only if it is actually implemented and tested.
+
+DOCUMENTATION REQUIREMENTS: ROOT README.MD
+Create an extremely thorough, beginner-friendly README.md in the repository root. It should be a real guide, not a short marketing description. Keep it accurate and synchronized with the code. Use a table of contents, examples, code fences, tables where useful, troubleshooting, and links to files that actually exist.
+
+Include these chapters, adapting them to the actual implementation:
+
+1. What Luna is
+2. What Luna is not
+3. Main features and current status
+4. Screenshots or demo instructions, only if real assets/demo exist
+5. Architecture overview
+6. Prerequisites
+7. Installation
+8. Running locally
+9. Building for production
+10. Testing and lint/type-check commands
+11. First Luna program
+12. Step-by-step first website
+13. Language design principles
+14. Syntax and grammar reference
+15. Lexer, parser, AST, semantic analysis, and compiler pipeline
+16. Values, variables, types, operators, expressions, and scope
+17. Functions and control flow
+18. Components, props, composition, and state if implemented
+19. Events and interactions
+20. HTML element/reference guide
+21. CSS styling and responsive design
+22. Forms and validation
+23. Images, fonts, audio, and video
+24. SVG and Canvas
+25. Animations and motion preferences
+26. Browser APIs and JavaScript interop
+27. Fetch and public APIs
+28. Local storage and browser persistence
+29. Accessibility
+30. Security and privacy
+31. Performance guidance
+32. Studio editor, preview, console, and diagnostics
+33. Exporting a standalone index.html
+34. Exporting a project/ZIP if implemented
+35. Deploying the Studio itself
+36. Deploying generated websites to Netlify
+37. Deploying to Cloudflare Pages
+38. Deploying to GitHub Pages
+39. Other static hosting and custom domains
+40. HTTPS, CORS, external assets, and API limitations
+41. Backend/database/authentication architecture and limitations
+42. At least 20 complete project tutorials using syntax that actually works
+43. Cookbook/recipes for common UI patterns
+44. Common errors and troubleshooting
+45. Browser compatibility and known limitations
+46. Testing and contributing
+47. Roadmap separated into implemented, in-progress, and planned features
+48. Glossary
+49. Full quick-reference tables for syntax and built-in APIs
+50. License and acknowledgements, based on the repository's actual license and dependencies
+
+README QUALITY RULES
+- Explain concepts for a beginner without assuming compiler knowledge.
+- For each language feature, show valid syntax, expected behavior, and a complete example.
+- Keep all code examples consistent with the implemented grammar.
+- Do not invent commands, file paths, features, APIs, screenshots, demo URLs, badges, release numbers, or license details.
+- Mark incomplete or planned features honestly.
+- Explain what requires a backend and what can run as static files.
+- Provide copy-pasteable commands for the actual package manager and scripts.
+- Include expected output where useful.
+- Explain how to report bugs and contribute.
+- If README becomes very large, create additional docs files and link to them, but retain a comprehensive root README with the overview, setup, first tutorial, key references, deployment, and links to the detailed docs.
+
+TESTING REQUIREMENTS
+Create automated tests for:
+- Tokenization of each token class
+- String escaping and comments
+- Parser precedence and nested expressions
+- AST structure
+- Variables and scope
+- Functions and return behavior
+- Conditionals and loops
+- Components and props if supported
+- HTML/CSS generation
+- Attribute/text escaping
+- Invalid syntax and semantic errors
+- Line/column diagnostics
+- Empty/incomplete source
+- Runtime interactions and events where testable
+- Exported HTML structure and runtime behavior
+- Every example template
+- Project import/export and persistence if implemented
+- Regression tests for every bug fixed
+
+Add a test or script that verifies every example compiles. Add a production build check. Do not mark a test as passing unless it was run successfully.
+
+IMPLEMENTATION PHASES
+Phase 0 — Repository assessment
+- Inspect repository, current stack, scripts, existing source, license, and README.
+- Identify what already works, what is broken, and what is missing.
+- Write a concise implementation checklist based on the actual code.
+
+Phase 1 — Reliable language core
+- Define grammar.
+- Implement lexer, parser, AST, diagnostics, semantic checks, and a small end-to-end compiler.
+- Add unit tests.
+- Implement a few small examples.
+
+Phase 2 — HTML/CSS output
+- Generate valid semantic HTML and scoped or well-defined CSS.
+- Implement safe escaping.
+- Test output and malformed input.
+
+Phase 3 — Browser runtime
+- Implement basic events and state only according to the defined grammar.
+- Establish a safe preview boundary.
+- Test event handling and error reporting.
+
+Phase 4 — Studio MVP
+- Build the real editor, compile/run flow, preview, diagnostics, console, and source download.
+- Ensure core workflows work on mobile.
+
+Phase 5 — Standalone export
+- Generate index.html.
+- Test it outside the Studio.
+- Add clear warnings for external dependencies and unsupported server requirements.
+
+Phase 6 — Useful language expansion
+- Add functions, conditions, loops, components, browser interop, and other features in a documented and tested order.
+
+Phase 7 — Examples and persistence
+- Add tested templates.
+- Add project save/open/import/export only if it can be done reliably.
+
+Phase 8 — Polish and accessibility
+- Improve keyboard and mobile usability, empty/error states, performance, and design consistency.
+
+Phase 9 — Documentation and deployment
+- Write the root README and supporting docs.
+- Verify every command and example.
+- Document actual deployment steps and limitations.
+
+Phase 10 — Final QA
+- Run all tests, type checks, lint checks, and production build scripts that exist.
+- Fix failures introduced by your changes.
+- Review console errors and key workflows if browser testing is available.
+- Summarize exactly what works and what remains.
+
+ACCEPTANCE CRITERIA
+The project is not complete until, at minimum:
+1. The repository contains a coherent language grammar.
+2. Luna source is tokenized and parsed by actual code.
+3. The compiler generates valid output for supported syntax.
+4. Invalid syntax produces useful diagnostics rather than crashing.
+5. At least a few nontrivial examples work end-to-end.
+6. The Studio can edit source, compile/run it, and display the output.
+7. The preview is separated from the Studio app appropriately.
+8. The user can export a working standalone HTML file for supported projects.
+9. Tests cover the core compiler and exporter.
+10. The root README explains setup, syntax, examples, deployment, and limitations accurately.
+11. The project builds successfully in the actual environment, or any environment-related failure is documented with exact output.
+12. No major UI control is knowingly fake or nonfunctional.
+13. The report distinguishes implemented, partially implemented, and planned features.
+
+FINAL REPORT FORMAT
+At the end of each milestone, report:
+- What you inspected
+- What you implemented
+- Files created/modified
+- Commands actually run
+- Test/build results, including failures
+- Features that are complete
+- Features that are partial or not implemented
+- Important security or compatibility limitations
+- The next exact milestone/tasks
+
+START NOW
+First inspect the repository and current files. Then begin implementing Phase 0 and Phase 1. Do not only respond with a plan. Make real code changes, run the available tests/build, fix problems, and update the README based on what truly exists. Prioritize a working compiler and working Studio over feature quantity. If time or context is limited, leave a reliable working milestone rather than a large unfinished collection of files.
+
+CONTINUATION PROMPT
+If this conversation or context runs out, continue from the repository's current state. Inspect the current files, git diff/status if available, README, tests, and build output. Read any progress notes. Do not discard working code or restart from a mockup. Pick the next incomplete milestone, implement it, test it, and update the progress report. Never claim completion for work that has not been implemented and verified.
