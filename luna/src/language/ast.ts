@@ -130,6 +130,12 @@ export type Expr =
 // ---------------- JSX-style content ----------------
 
 /** `{for x in xs <li>{x}</li>}` — a reactive list rendered inline in markup. */
+export interface FragmentNode extends Node {
+  kind: 'Fragment';
+  children: ContentNode[];
+}
+
+/** `{for x in xs <li>{x}</li>}` — a reactive list rendered inline in markup. */
 export interface ForDirective extends Node {
   kind: 'ForDirective';
   varName: string;
@@ -181,7 +187,7 @@ export interface OnWrapperNode extends Node {
 /** An attribute value is either a static string or an expression. */
 export type Attr = { name: string; value: Expr | string; pos: SourcePosition };
 
-export type ContentNode = ElementNode | ComponentCallNode | Interpolation | TextNode | ForDirective | IfDirective | OnWrapperNode;
+export type ContentNode = ElementNode | ComponentCallNode | Interpolation | TextNode | ForDirective | IfDirective | OnWrapperNode | FragmentNode;
 
 // ---------------- Statements ----------------
 

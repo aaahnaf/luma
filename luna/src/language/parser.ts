@@ -228,8 +228,45 @@ class Parser {
     if (this.atKeyword('for')) return this.parseFor();
     if (this.atKeyword('while')) return this.parseWhile();
     if (this.atKeyword('on')) return this.parseOn();
+    if (this.atKeyword('render')) return this.parseRender();
     if (this.at('LBRACE')) return this.parseBlock();
     return this.parseExprOrRender();
+  }
+
+  /** `render { <ui> }` — a top-level (or component-body) UI block. */
+  private parseRender(): AST.Stmt {
+    const kw = this.next(); // render
+    const open = this.expect('LBRACE', '"{" after "render"');
+    const nodes = this.parseContentUntilRBrace(open);
+    return { kind: 'RenderStmt', pos: kw.pos, content: { kind: 'Fragment', pos: open.pos, children: nodes } as any };
+  }
+
+  /** Parse markup content until the current frame's closing `}` (consumed). */
+  private parseContentUntilRBrace(open: Token): AST.ContentNode[] {
+    const nodes: AST.ContentNode[] = [];
+    let textBuf = '';
+    let textStart = open.end;
+    const flushText = () => {
+      const collapsed = collapseWhitespace(textBuf);
+      if (collapsed) nodes.push({ kind: 'Text', pos: textStart, value: collapsed });
+      textBuf = '';
+    };
+    while (true) {
+      const t = this.peek();
+      if (t.type === 'EOF') this.err('Unterminated render block', open, 'add a closing "}"');
+      if (t.type === 'RBRACE') {
+        this.next();
+        flushText();
+        return nodes;
+      }
+      if (t.type === 'TEXT') {
+        if (!textBuf) textStart = t.pos;
+        textBuf += this.next().value;
+        continue;
+      }
+      flushText();
+      nodes.push(...this.parseContentSequence(t));
+    }
   }
 
   private parseBlock(): AST.BlockStmt {

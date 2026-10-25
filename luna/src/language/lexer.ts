@@ -57,6 +57,10 @@ class Lexer {
   private braceStack: Ctx[] = [];
   /** Number of open elements whose children are markup. */
   private markupDepth = 0;
+  /** When > 0, the next `{` opens a directive BODY (markup) instead of code. */
+  private directiveBodyPending = 0;
+  /** When > 0, the next `{` opens a `render { ... }` UI block (markup). */
+  private renderBodyPending = 0;
 
   constructor(source: string) {
     this.source = source;
@@ -229,9 +233,23 @@ class Lexer {
     }
 
     // Style blocks: `{style ... }` — raw CSS text (code context only).
-    if (c === '{' && !this.inMarkup() && this.source.startsWith('style', this.pos + 1)) {
+    if (c === '{' && !this.inMarkup() && /^style(?![A-Za-z0-9_$])/.test(this.source.slice(this.pos + 1))) {
       this.scanStyleBlock(start);
       return;
+    }
+
+    // The `render` keyword is followed by a `{ ... }` UI block. Emit the
+    // keyword here; the following `{` opens the markup context (handled in
+    // the LBRACE case via renderBodyPending).
+    if (c === 'r' && this.source.startsWith('render', this.pos)) {
+      let j = this.pos + 'render'.length;
+      while (this.source[j] === ' ' || this.source[j] === '\t') j++;
+      if (this.source[j] === '{') {
+        for (let k = 0; k < 'render'.length; k++) this.advance();
+        this.renderBodyPending++;
+        this.make('KEYWORD', 'render', start, { keyword: 'render' });
+        return;
+      }
     }
 
     // UI directives inside markup: `{for ... }`, `{if ... }`.
@@ -241,8 +259,11 @@ class Lexer {
         this.advance(); // {
         while (this.ch() === ' ' || this.ch() === '\t') this.advance();
         for (let k = 0; k < kw.length; k++) this.advance();
-        this.braceStack.push('markup'); // directive body is markup until its `}`
-        this.markupDepth++;
+        // The directive header (`x in items` / `cond`) is code; its body is
+        // markup. Push a 'code' frame for the header, and remember that the
+        // next `{` opens the directive body (markup context).
+        this.braceStack.push('code');
+        this.directiveBodyPending++;
         this.make('DIRECTIVE', kw, start);
         return;
       }
@@ -251,6 +272,24 @@ class Lexer {
     switch (c) {
       case '{': {
         this.advance();
+        if (this.renderBodyPending > 0) {
+          // `render { ... }` — the block is a markup region until its `}`.
+          this.renderBodyPending--;
+          this.braceStack.push('markup');
+          this.markupDepth++;
+          this.make('LBRACE', '{', start);
+          return;
+        }
+        if (this.directiveBodyPending > 0) {
+          // This `{` opens a directive body: switch back to markup context.
+          this.directiveBodyPending--;
+          const top = this.braceStack[this.braceStack.length - 1];
+          if (top === 'code') this.braceStack.pop();
+          this.braceStack.push('markup');
+          this.markupDepth++;
+          this.make('LBRACE', '{', start);
+          return;
+        }
         // Nested braces are ordinary code braces; they never shadow the
         // surrounding markup/template boundary frames on the stack.
         this.braceStack.push('code');
