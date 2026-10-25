@@ -279,6 +279,10 @@ class Gen {
       case 'Element':
       case 'ComponentCall':
         return this.elementSpec(node);
+      case 'Fragment': {
+        const kids = node.children.map((c) => this.content(c)).join(', ');
+        return `_frag([${kids}])`;
+      }
       default:
         throw new Error(`Cannot generate content node "${(node as { kind: string }).kind}"`);
     }
@@ -480,6 +484,7 @@ function _len(x) {
 
 // -- UI specs (lazy) --
 function _txt(s) { return { k: 'text', value: s }; }
+function _frag(children) { return { k: 'frag', children }; }
 function _dyn(thunk) { return { k: 'dyn', thunk }; }
 function _el(tag, attrs, children, onEvent, onHandler) { return { k: 'el', tag, attrs, children, onEvent, onHandler }; }
 function _comp(name, props, children, onEvent, onHandler) { return { k: 'comp', name, props, children, onEvent, onHandler }; }
