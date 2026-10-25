@@ -26,6 +26,7 @@ export type TokenType =
   | 'TAG' // <name ...> or </name> or <name ... />
   | 'TEXT' // raw text run inside markup (prose, non-ASCII glyphs, punctuation)
   | 'DIRECTIVE' // `{for` / `{if` opening a UI directive block in markup
+  | 'DIRECTIVE_HDR' // raw source text of a directive header (between `{for` and its body `{`)
   | 'DIRECTIVE_END' // matching `}` closing a UI directive block
   // Operators
   | 'PLUS'
@@ -73,6 +74,10 @@ export interface TagAttr {
   expr?: string;
   /** True for valueless attributes like `disabled`. */
   boolean?: boolean;
+  /** Inline event attribute: `on click { handler }` on any tag. */
+  event?: string;
+  /** Raw handler source for an inline event attribute. */
+  handlerSrc?: string;
 }
 
 export interface TagInfo {

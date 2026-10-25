@@ -167,6 +167,8 @@ export interface ElementNode extends Node {
   attributes: Attr[];
   children: ContentNode[];
   selfClosing: boolean;
+  /** Inline `on <event> { handler }` bindings from the tag header. */
+  events?: EventAttr[];
 }
 
 export interface ComponentCallNode extends Node {
@@ -174,6 +176,7 @@ export interface ComponentCallNode extends Node {
   name: string;
   attributes: Attr[];
   children: ContentNode[];
+  events?: EventAttr[];
 }
 
 /** `<on event { handler } <element>>` — an element wrapped with an event binding. */
@@ -186,6 +189,9 @@ export interface OnWrapperNode extends Node {
 
 /** An attribute value is either a static string or an expression. */
 export type Attr = { name: string; value: Expr | string; pos: SourcePosition };
+
+/** Inline event binding on a tag: `on click { handler }`. */
+export type EventAttr = { event: string; handler: Expr; pos: SourcePosition };
 
 export type ContentNode = ElementNode | ComponentCallNode | Interpolation | TextNode | ForDirective | IfDirective | OnWrapperNode | FragmentNode;
 

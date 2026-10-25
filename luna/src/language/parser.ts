@@ -809,25 +809,64 @@ class Parser {
     return attrs;
   }
 
-  /** Parse `attr="{expr}"` contents with positions mapped back to the outer token. */
-  private parseInterpExpr(src: string, outer: Token): AST.Expr {
+  /** Extract inline `on <event> { handler }` bindings from a tag header and
+   *  parse each handler body as statements (markup mode so nested UI works). */
+  private extractEvents(tag: TagInfo, tok: Token): AST.EventAttr[] | undefined {
+    let events: AST.EventAttr[] | undefined;
+    for (const a of tag.attrs) {
+      if (!a.event || !a.handlerSrc) continue;
+      if (!VALID_EVENTS.includes(a.event)) {
+        this.err(`Unsupported event "${a.event}"`, tok, `supported events: ${VALID_EVENTS.join(', ')}`);
+      }
+      const handler = this.parseInterpExpr(a.handlerSrc, tok, true);
+      if (!events) events = [];
+      events.push({ event: a.event, handler: handler as AST.Expr, pos: tok.pos });
+    }
+    return events;
+  }
+
+  /** Parse `attr="{expr}"` / `<on ... { handler }>` contents with positions
+   *  mapped back to the outer token. With `markup=true` the sub-source is
+   *  wrapped in `render { ... }` so element syntax inside inline event
+   *  handlers (`if x { <b>y</b> }`) lexes correctly; trailing markup junk
+   *  after the statements is tolerated. */
+  private parseInterpExpr(src: string, outer: Token, markup = false): AST.Expr | AST.BlockStmt {
     const baseOffset = srcOffsetInToken(this.source, outer, src);
-    const { tokens, diagnostics } = tokenize(src);
+    const wrapped = markup ? `render {\n${src}\n}` : src;
+    const shift = markup ? 1 : 0; // extra leading line introduced by wrapping
+    const { tokens, diagnostics } = tokenize(wrapped);
     if (diagnostics.length > 0) {
       for (const d of diagnostics) {
         this.subDiagnostics.push({ ...d, line: outer.pos.line, column: outer.pos.column, message: `In attribute expression: ${d.message}` });
       }
       this.err(`Invalid attribute expression "{${src}}"`, outer, diagnostics[0].message);
     }
-    const sub = new Parser(tokens, src);
+    const sub = new Parser(tokens, wrapped);
     sub.markupDepth = Math.max(0, outer.tag && !outer.tag.closing && !outer.tag.selfClosing ? 1 : 0);
-    let expr: AST.Expr;
     try {
-      expr = sub.parseExpr();
-      if (sub.peek().type !== 'EOF') {
-        this.subDiagnostics.push(error('Expected the expression to end here', outer.pos.line, outer.pos.column, `inside "{${src}"`));
-        this.err(`Invalid attribute expression "{${src}}"`, outer, 'the expression did not end where expected');
+      let result: AST.Expr | AST.BlockStmt;
+      if (markup) {
+        sub.next(); // render
+        sub.next(); // {
+        const stmts: AST.Stmt[] = [];
+        while (!sub.at('RBRACE') && !sub.at('EOF')) {
+          stmts.push(sub.parseStatement());
+          sub.eatSemi();
+        }
+        if (stmts.length === 1 && stmts[0].kind === 'ExprStmt') {
+          result = (stmts[0] as AST.ExprStmt).expr;
+        } else {
+          result = { kind: 'Block', pos: outer.pos, statements: stmts } as AST.BlockStmt;
+        }
+      } else {
+        result = sub.parseExpr();
+        if (sub.peek().type !== 'EOF') {
+          this.subDiagnostics.push(error('Expected the expression to end here', outer.pos.line, outer.pos.column, `inside "{${src}"`));
+          this.err(`Invalid attribute expression "{${src}}"`, outer, 'the expression did not end where expected');
+        }
       }
+      remapPos(result, outer.pos, baseOffset);
+      return result;
     } catch (e) {
       if (e instanceof ParseAbort) {
         this.subDiagnostics.push(...sub.diagnostics.map((d) => ({ ...d, line: outer.pos.line, column: outer.pos.column })));
@@ -835,9 +874,6 @@ class Parser {
       }
       throw e;
     }
-    // Re-map positions of the sub-AST onto the outer tag token (coarse mapping).
-    remapPos(expr, outer.pos, baseOffset);
-    return expr;
   }
 
   private parseElement(): AST.ContentNode {
@@ -845,13 +881,14 @@ class Parser {
     const tag = tok.tag!;
     if (tag.closing) this.err(`Unexpected closing tag "</${tag.name}">`, tok);
     const attributes = this.convertAttrs(tag, tok);
+    const events = this.extractEvents(tag, tok);
     const isComponent = /^[A-Z]/.test(tag.name);
 
     if (tag.selfClosing) {
       if (isComponent) {
-        return { kind: 'ComponentCall', pos: tok.pos, name: tag.name, attributes, children: [] };
+        return { kind: 'ComponentCall', pos: tok.pos, name: tag.name, attributes, children: [], events };
       }
-      return { kind: 'Element', pos: tok.pos, tag: tag.name, attributes, children: [], selfClosing: true };
+      return { kind: 'Element', pos: tok.pos, tag: tag.name, attributes, children: [], selfClosing: true, events };
     }
 
     const lower = tag.name.toLowerCase();
@@ -861,12 +898,12 @@ class Parser {
     this.markupDepth--;
 
     if (isComponent) {
-      return { kind: 'ComponentCall', pos: tok.pos, name: tag.name, attributes, children };
+      return { kind: 'ComponentCall', pos: tok.pos, name: tag.name, attributes, children, events };
     }
     if (VOID_HTML.has(lower) && children.length > 0) {
       this.err(`Void element <${tag.name}> cannot have children`, tok);
     }
-    return { kind: 'Element', pos: tok.pos, tag: tag.name, attributes, children, selfClosing: false };
+    return { kind: 'Element', pos: tok.pos, tag: tag.name, attributes, children, selfClosing: false, events };
   }
 
   /** Parse `<on click { bump() } <button>go</button>` into an OnWrapper node. */
@@ -902,19 +939,43 @@ class Parser {
   /** Parse `{for x in xs <body>}` / `{if cond <body>}` directives in markup. */
   private parseDirective(): AST.ContentNode {
     const tok = this.expect('DIRECTIVE', 'a UI directive');
-    if (tok.value === 'for') {
-      const varName = this.identName('a loop variable name');
-      if (!this.atKeyword('in') && !this.atKeyword('of')) {
-        this.err('Expected "in" after the loop variable', this.peek(), 'example: {for item in items <li>{item}</li>}');
-      }
-      this.next();
-      const iterable = this.parseExpr();
-      const body = this.parseDirectiveBody(tok, 'for');
-      return { kind: 'ForDirective', pos: tok.pos, varName, iterable, body };
+    // The lexer captured the directive header (everything between the keyword
+    // and the body-opening `{`) as raw source text; re-lex it here so headers
+    // like `n > 2` or `x in items` never interfere with the outer token stream.
+    let hdr: Token | null = null;
+    if (this.peek().type === 'DIRECTIVE_HDR') hdr = this.next();
+    const subTokens = hdr ? tokenize(hdr.value).tokens.filter((t) => t.type !== 'NEWLINE' && t.type !== 'EOF') : [];
+    if (hdr && subTokens.length === 0) {
+      this.err(`The {${tok.value} directive is missing its expression`, tok, `example: {${tok.value} ... <element>}`);
     }
-    const condition = this.parseExpr();
-    const then = this.parseDirectiveBody(tok, 'if');
-    return { kind: 'IfDirective', pos: tok.pos, condition, then };
+    const sub = new Parser(subTokens, hdr ? hdr.value : '');
+    try {
+      if (tok.value === 'for') {
+        const varTok = sub.peek();
+        if (varTok.type !== 'IDENT') {
+          this.err('Expected a loop variable name', tok, 'example: {for item in items <li>{item}</li>}');
+        }
+        const varName = sub.identName('a loop variable name');
+        if (!sub.atKeyword('in') && !sub.atKeyword('of')) {
+          this.err('Expected "in" after the loop variable', tok, 'example: {for item in items <li>{item}</li>}');
+        }
+        sub.next();
+        const iterable = sub.parseExpr();
+        if (!sub.at('EOF')) this.err('Unexpected trailing content in {for header', tok, `header was "${hdr?.value ?? ''}"`);
+        const body = this.parseDirectiveBody(tok, 'for');
+        return { kind: 'ForDirective', pos: tok.pos, varName, iterable, body };
+      }
+      const condition = sub.parseExpr();
+      if (!sub.at('EOF')) this.err('Unexpected trailing content in {if header', tok, `header was "${hdr?.value ?? ''}"`);
+      const then = this.parseDirectiveBody(tok, 'if');
+      return { kind: 'IfDirective', pos: tok.pos, condition, then };
+    } catch (e) {
+      if (e instanceof ParseAbort) {
+        this.diagnostics.push(...sub.diagnostics.map((d) => ({ ...d, line: tok.pos.line, column: tok.pos.column })));
+        this.err(`Invalid {${tok.value} directive header`, tok, sub.diagnostics[0]?.message ?? `expected "{${tok.value} <expr> <body>}"`);
+      }
+      throw e;
+    }
   }
 
   private parseDirectiveBody(dirTok: Token, which: string): AST.ContentNode[] {
