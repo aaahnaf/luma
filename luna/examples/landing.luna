@@ -1,0 +1,55 @@
+page {
+  title: "Luna — a friendly little language"
+  description: "Marketing landing page written in Luna"
+  themeColor: "#9a7dff"
+}
+
+{style
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:#0b0a12; color:#efeaff; }
+  header { display:flex; justify-content:space-between; align-items:center; padding:1.2rem 2rem; }
+  .logo { font-weight:800; font-size:1.4rem; color:#9a7dff; }
+  .hero { text-align:center; padding:6rem 1rem 4rem; }
+  .hero h1 { font-size:3.2rem; margin:0; }
+  .hero p { color:#a89ec9; font-size:1.2rem; max-width:560px; margin:1rem auto; }
+  .cta { display:inline-block; margin-top:1.5rem; padding:.8rem 2rem; border-radius:999px; background:#9a7dff; color:white; text-decoration:none; font-weight:600; }
+  .features { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1.5rem; padding:2rem; max-width:960px; margin:0 auto; }
+  .feature { background:#17152399; border:1px solid #2a2540; padding:1.5rem; border-radius:14px; }
+  footer { text-align:center; padding:2rem; color:#6f678f; }
+}
+
+component Feature(title: "", body: "") {
+  render {
+    <div class="feature">
+      <h3>{title}</h3>
+      <p>{body}</p>
+    </div>
+  }
+}
+
+state emails = []
+
+render {
+  <header>
+    <span class="logo">☾ Luna</span>
+    <a class="cta" href="#signup">Get started</a>
+  </header>
+  <main>
+    <section class="hero">
+      <h1>Build pages like you write prose</h1>
+      <p>Luna is a tiny programming language where markup, style, and logic live together in one friendly file.</p>
+      <a class="cta" href="#signup">Try it free</a>
+    </section>
+    <section class="features">
+      <Feature title="Reactive by default" body="State changes re-render only what they touch." />
+      <Feature title="One file" body="Markup, CSS, and logic share a single readable document." />
+      <Feature title="Exports anywhere" body="Ship a static HTML file — no framework runtime required." />
+    </section>
+    <section id="signup" class="hero">
+      <h2>Join the waitlist</h2>
+      <on click { if len(email) > 3 { push(emails, email); log("signed up!") } } <button>Sign up</button>
+      <p>{len(emails)} people signed up</p>
+    </section>
+  </main>
+  <footer>Made with ☾ in Luna Studio</footer>
+}
