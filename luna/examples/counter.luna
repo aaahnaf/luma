@@ -1,0 +1,23 @@
+page {
+  title: "Counter"
+  description: "A tiny counter demo"
+}
+
+{style
+  body { font-family: system-ui; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #14121f; color: #eee; }
+  .card { text-align: center; padding: 2rem 3rem; border-radius: 16px; background: #221f33; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+  .count { font-size: 4rem; margin: 0 0 .5rem; color: #9a7dff; }
+  button { font-size: 1.1rem; padding: .5rem 1.2rem; margin: 0 .3rem; border: none; border-radius: 8px; background: #9a7dff; color: white; cursor: pointer; }
+  button:hover { background: #b39cff; }
+}
+
+state count = 0
+
+render {
+  <div class="card">
+    <h1 class="count">{count}</h1>
+    <on click { count = count + 1 } <button>+1</button>
+    <on click { if count > 0 { count = count - 1 } } <button>-1</button>
+    <on click { count = 0 } <button>reset</button>
+  </div>
+}
