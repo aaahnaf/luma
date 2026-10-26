@@ -79,7 +79,12 @@ export function analyze(program: AST.Program): Diagnostic[] {
     seenTop.set(c.name, c);
   }
 
-  const globalScope: Scope = { parent: null, vars: new Set(seenTop.keys()) };
+  // NOTE: globalScope.vars starts EMPTY. Top-level declarations are registered
+  // by declare() while walking below (walkStatements(program.statements, globalScope)).
+  // Seeding it from seenTop here caused every top-level `state`/`let`/`fn` to be
+  // falsely reported as "already declared in this scope" when the walker declared it.
+  // Duplicate top-level names are still caught by the seenTop pre-pass above.
+  const globalScope: Scope = { parent: null, vars: new Set<string>() };
 
   // ---- walk statements ----
   const checkReturnDepth = { depth: 0 };
@@ -286,7 +291,12 @@ export function analyze(program: AST.Program): Diagnostic[] {
   }
 
   function nearestName(name: string, scope: Scope): string | null {
-    const all = [...scope.vars, ...BUILTINS];
+    // Search the ENTIRE enclosing scope chain, not just the innermost scope.
+    // Previously only `scope.vars` was considered, so a typo like `countr` used
+    // inside `render { ... }` (checked against globalScope) never saw the real
+    // declaration and produced no "did you mean" suggestion.
+    const all: string[] = [...BUILTINS];
+    for (let s: Scope | null = scope; s; s = s.parent) for (const v of s.vars) all.push(v);
     let best: string | null = null;
     let bestDist = 3;
     for (const cand of all) {
