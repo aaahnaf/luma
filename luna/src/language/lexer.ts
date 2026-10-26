@@ -588,18 +588,38 @@ class Lexer {
     this.directiveHeaderActive = false;
     const src = this.source;
     let i = this.pos;
-    let depth = 0; // nesting inside the captured expression (parens/braces)
+    let depth = 0; // nesting inside the captured expression (parens/brackets/braces)
     let end = -1; // offset of the body-opening `{`, or of the group's final `}`
     let bodyFound = false;
     while (i < src.length) {
       const v = src[i];
-      if (v === '"' || v === "'") {
+      if (v === '"' || v === "'" || v === '`') {
         const q = v;
         i++;
         while (i < src.length && src[i] !== q) {
           if (src[i] === '\\') i++;
           i++;
         }
+        i++;
+        continue;
+      }
+      if (v === '<' && /[A-Za-z]/.test(src[i + 1] ?? '')) {
+        // A tag opening at header depth means the body starts right here
+        // (`{for x in xs <li>...}`): no separate `{` body delimiter exists.
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+        i++;
+        continue;
+      }
+      if (v === '(' || v === '[') {
+        depth++;
+        i++;
+        continue;
+      }
+      if (v === ')' || v === ']') {
+        depth = Math.max(0, depth - 1);
         i++;
         continue;
       }
