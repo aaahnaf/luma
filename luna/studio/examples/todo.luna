@@ -1,0 +1,51 @@
+page {
+  title: "Todo List"
+}
+
+{style
+  body { font-family: system-ui; max-width: 520px; margin: 3rem auto; background:#0f1117; color:#e6e6e6; }
+  h1 { color:#7dd3fc; }
+  input { width: 70%; padding:.5rem; border-radius:8px; border:1px solid #333; background:#1b1f2a; color:white; }
+  button { padding:.5rem 1rem; border-radius:8px; border:none; background:#7dd3fc; color:#08222f; cursor:pointer; }
+  li { list-style:none; padding:.5rem; border-bottom:1px solid #222; }
+  li.done { text-decoration: line-through; opacity:.5; }
+  ul { padding: 0; }
+}
+
+state todos = []
+state draft = ""
+state nextId = 1
+
+fn addTodo() {
+  if len(draft) > 0 {
+    push(todos, { id: nextId, text: draft, done: false })
+    nextId = nextId + 1
+    draft = ""
+  }
+}
+
+component TodoItem(text: "", done: false, id: 0) {
+  render {
+    <li class={done ? "done" : ""}>
+      <on click { toggle(id) } <span>{text}</span>
+    </li>
+  }
+}
+
+fn toggle(id) {
+  for t in todos {
+    if t.id == id { t.done = not t.done }
+  }
+}
+
+render {
+  <div>
+    <h1>Todos</h1>
+    <input placeholder="What needs doing?" value="{draft}" on keyup { if key == "Enter" { addTodo() } } />
+    <on click { addTodo() } <button>Add</button>
+    <ul>
+      {for t in todos <TodoItem text={t.text} done={t.done} id={t.id} />}
+    </ul>
+    <p>{len(todos)} item(s)</p>
+  </div>
+}

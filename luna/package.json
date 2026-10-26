@@ -1,14 +1,18 @@
 {
   "name": "luna",
   "version": "1.0.0",
+  "private": true,
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "dev:studio": "vite",
+    "build:studio": "vite build",
+    "preview:studio": "vite preview"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Luna language compiler + Luna Studio browser IDE",
   "dependencies": {
     "@vitejs/plugin-react": "^4.7.0",
     "react": "^18.3.1",
