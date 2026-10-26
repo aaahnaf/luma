@@ -940,7 +940,13 @@ class Lexer {
     // scanner cannot handle. Hand the whole tag over to the raw-capture state
     // machine, which walks to the real depth-0 tag terminator and re-parses
     // the collected header with this same grammar.
+    // NOTE: previously we handed over *immediately* here, but `this.pos` still
+    // pointed at `<` — so continueOnRawScan captured the full tag text and the
+    // inner re-scan lexer set onRawScan again without advancing, producing an
+    // infinite loop that emitted zero tokens. We now advance past `<tagname`
+    // first so only the attribute/header text is handed over.
     if (name === 'on' && !closing) {
+      this.syncTo(i); // consume `<on` (i already points just past the name)
       this.onRawScan = { start, name };
       return;
     }
