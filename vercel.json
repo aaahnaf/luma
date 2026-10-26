@@ -1,7 +1,8 @@
 {
-  "buildCommand": "cd luna && npm run build:studio",
-  "outputDirectory": "dist",
-  "installCommand": "cd luna && npm install",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm --prefix luna ci && npm --prefix luna run build:studio",
+  "outputDirectory": "luna/dist",
+  "installCommand": "false",
   "framework": null,
   "cleanUrls": true,
   "trailingSlash": false
