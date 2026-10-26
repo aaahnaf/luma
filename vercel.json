@@ -1,0 +1,8 @@
+{
+  "buildCommand": "cd luna && npm run build:studio",
+  "outputDirectory": "dist",
+  "installCommand": "cd luna && npm install",
+  "framework": null,
+  "cleanUrls": true,
+  "trailingSlash": false
+}
