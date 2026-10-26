@@ -199,7 +199,7 @@ class Lexer {
   /** True when the current position sits inside element/directive markup
    *  (i.e. the innermost open `{` frame — if any — is a markup frame). */
   private inMarkup(): boolean {
-    if (this.markupDepth > 0) return true; // inside an open element body
+    if (this.markupDepth > 0 && this.braceStack.length === 0) return true; // bare element bodies (sub-lexed fragments)
     const top = this.braceStack[this.braceStack.length - 1];
     return top ? top.ctx === 'markup' : false;
   }
@@ -216,7 +216,12 @@ class Lexer {
 
     if (c === '\n') {
       this.advance();
-      this.tokens.push({ type: 'NEWLINE', value: '\n', pos: start, end: this.position() });
+      // Newlines inside markup content are formatting only — the parser joins
+      // adjacent TEXT runs. Emitting them as tokens would let a stray `\n`
+      // terminate an interpolation or directive header scan prematurely.
+      if (!this.inMarkup()) {
+        this.tokens.push({ type: 'NEWLINE', value: '\n', pos: start, end: this.position() });
+      }
       return;
     }
 
@@ -232,6 +237,17 @@ class Lexer {
     // Raw capture for `<on event { handler } ...>` wrapper tags (see onRawScan).
     if (this.onRawScan) {
       this.continueOnRawScan();
+      return;
+    }
+
+    // Inside a tag header, prose words are attribute names / static values —
+    // never language keywords. This must be checked before the directive-header
+    // and raw-capture states above? No: those states are handled above. This
+    // guard covers the normal in-header scan path used by sub-lexers.
+    if (this.inTagHeader && ID_START.test(c)) {
+      let word = '';
+      while (this.pos < this.source.length && ID_CHAR.test(this.ch())) word += this.advance();
+      this.make('IDENT', word, start);
       return;
     }
 
@@ -899,6 +915,15 @@ class Lexer {
 
     const attrs: TagAttr[] = [];
     let selfClosing = false;
+    // `<on event { handler } <child>` wrapper tags: the header contains a
+    // multi-line balanced group followed by the child's `<`, which the inline
+    // scanner cannot handle. Hand the whole tag over to the raw-capture state
+    // machine, which walks to the real depth-0 tag terminator and re-parses
+    // the collected header with this same grammar.
+    if (name === 'on' && !closing) {
+      this.onRawScan = { start, name };
+      return;
+    }
     this.inTagHeader = true;
 
     while (true) {
@@ -1120,7 +1145,17 @@ class Lexer {
     this.onRawScan = null;
     // Re-scan the collected header text with the standard attribute scanner.
     // It contains complete balanced groups now, so captureGroup succeeds.
-    const attrs = this.scanAttrsFromText(headerText, st.name);
+    // The inner lexer starts in code context (markupDepth 0), so its scanTag
+    // runs the inline attribute grammar — including `on <event> { ... }` —
+    // and never recurses into raw capture (the wrapper's own name is already
+    // stripped from headerText).
+    let attrs: TagAttr[];
+    try {
+      attrs = this.scanAttrsFromText(headerText, st.name);
+    } catch (e) {
+      if (e instanceof Bail) throw e;
+      this.err(`Invalid attribute in tag "<${st.name}"`, 'inline event group could not be parsed');
+    }
     const tag: TagInfo = { name: st.name, closing: false, selfClosing, attrs };
     this.tokens.push({ type: 'TAG', value: src.slice(st.start.offset, this.pos), tag, pos: st.start, end: this.position() });
     this.prevExprEnd = selfClosing;
